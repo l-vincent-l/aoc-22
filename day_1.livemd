@@ -1,14 +1,14 @@
 # Advent of code - Day 1
 
-## Section
+## Méthode 1
 
 ```elixir
 l =
   File.read!("inputs/day1.txt")
+  |> String.trim()
   |> String.split("\n\n")
   |> Enum.map(fn s ->
     String.split(s, "\n")
-    |> Enum.reject(&(&1 == ""))
     |> Enum.map(&String.to_integer/1)
     |> Enum.sum()
   end)
@@ -20,10 +20,12 @@ Enum.max(l)
 
 ```elixir
 l
-|> Enum.sort(&(&1 >= &2))
-|> Enum.take(3)
+|> Enum.sort()
+|> Enum.take(-3)
 |> Enum.sum()
 ```
+
+## Methode 2
 
 ```elixir
 File.read!("inputs/day1.txt")

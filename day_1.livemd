@@ -1,0 +1,48 @@
+# Advent of code - Day 1
+
+## Section
+
+```elixir
+l =
+  File.read!("inputs/day1.txt")
+  |> String.split("\n\n")
+  |> Enum.map(fn s ->
+    String.split(s, "\n")
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.reduce(0, &(&1 + &2))
+  end)
+```
+
+```elixir
+Enum.max(l)
+```
+
+```elixir
+l
+|> Enum.sort(&(&1 >= &2))
+|> Enum.take(3)
+|> Enum.reduce(0, &(&1 + &2))
+```
+
+```elixir
+File.read!("inputs/day1.txt")
+|> String.split("\n")
+|> Enum.reduce(%{m: 0, c: 0}, fn
+  "", %{m: m, c: c} when m < c -> %{m: c, c: 0}
+  "", acc -> Map.put(acc, :c, 0)
+  x, acc -> Map.update!(acc, :c, &(&1 + String.to_integer(x)))
+end)
+|> Map.get(:m)
+```
+
+```elixir
+File.read!("inputs/day1.txt")
+|> String.split("\n")
+|> Enum.reduce(%{m: [], c: 0}, fn
+  "", %{m: m, c: c} -> %{m: [c | m] |> Enum.sort() |> Enum.take(-3), c: 0}
+  x, acc -> Map.update!(acc, :c, &(&1 + String.to_integer(x)))
+end)
+|> Map.get(:m)
+|> Enum.reduce(0, &(&1 + &2))
+```

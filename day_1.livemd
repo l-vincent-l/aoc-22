@@ -10,7 +10,7 @@ l =
     String.split(s, "\n")
     |> Enum.reject(&(&1 == ""))
     |> Enum.map(&String.to_integer/1)
-    |> Enum.reduce(0, &(&1 + &2))
+    |> Enum.sum()
   end)
 ```
 
@@ -22,7 +22,7 @@ Enum.max(l)
 l
 |> Enum.sort(&(&1 >= &2))
 |> Enum.take(3)
-|> Enum.reduce(0, &(&1 + &2))
+|> Enum.sum()
 ```
 
 ```elixir
@@ -44,5 +44,5 @@ File.read!("inputs/day1.txt")
   x, acc -> Map.update!(acc, :c, &(&1 + String.to_integer(x)))
 end)
 |> Map.get(:m)
-|> Enum.reduce(0, &(&1 + &2))
+|> Enum.sum()
 ```

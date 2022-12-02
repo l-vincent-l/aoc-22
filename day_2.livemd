@@ -1,0 +1,46 @@
+# Advent of code - Day 2
+
+## Section
+
+```elixir
+win_matrice = [
+  [3, 6, 0],
+  [0, 3, 6],
+  [6, 0, 3]
+]
+
+play_matrice = [
+  [3, 1, 2],
+  [1, 2, 3],
+  [2, 3, 1]
+]
+```
+
+```elixir
+inputs =
+  "inputs/day2.txt"
+  |> File.read!()
+  |> String.trim()
+  |> String.split("\n")
+```
+
+```elixir
+a_ = fn v -> v - 65 end
+b_ = fn v -> v - 88 end
+```
+
+```elixir
+inputs
+|> Enum.map(fn "" <> <<a::utf8>> <> " " <> <<b::utf8>> ->
+  Enum.at([3, 6, 0], -a_.(a) + b_.(b)) + b_.(b) + 1
+end)
+|> Enum.sum()
+```
+
+```elixir
+inputs
+|> Enum.map(fn "" <> <<a::utf8>> <> " " <> <<b::utf8>> ->
+  Enum.at([3, 1, 2], -a_.(a) + b_.(b)) + b_.(b) * 3
+end)
+|> Enum.sum()
+```

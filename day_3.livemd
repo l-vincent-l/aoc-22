@@ -1,0 +1,69 @@
+# Advent of code - Day 3
+
+## Partie 1
+
+```elixir
+inputs =
+  "inputs/day3.txt"
+  |> File.read!()
+  |> String.trim()
+  |> String.split("\n")
+```
+
+```elixir
+defmodule Score do
+  def score(input) do
+    {a, b} = String.split_at(input, trunc(String.length(input) / 2))
+
+    case String.myers_difference(a, b)[:eq] do
+      <<c::utf8>> <> _ when c <= ?Z -> c - ?A + 27
+      <<c::utf8>> <> _ -> c - ?a + 1
+    end
+  end
+end
+```
+
+```elixir
+inputs
+|> Enum.map(&Score.score/1)
+|> Enum.sum()
+```
+
+## Partie 2
+
+```elixir
+inputs2 =
+  """
+  vJrwpWtwJgWrhcsFMMfFFhFp
+  jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+  PmmdzqPrVvPwwTWBwg
+  wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+  ttgJtRGJQctTZtZT
+  CrZsJsPPZsGzwwsLwLmpwMDw
+  """
+  |> String.trim()
+  |> String.split("\n")
+```
+
+```elixir
+defmodule Score2 do
+  def score([i1, i2, i3]) do
+    i1
+    |> String.graphemes()
+    |> MapSet.new()
+    |> MapSet.intersection(MapSet.new(String.graphemes(i2)))
+    |> MapSet.intersection(MapSet.new(String.graphemes(i3)))
+    |> MapSet.to_list()
+    |> Enum.at(0)
+    |> case do
+      <<c::utf8>> <> _ when c <= ?Z -> c - ?A + 27
+      <<c::utf8>> <> _ -> c - ?a + 1
+    end
+  end
+end
+
+inputs
+|> Enum.chunk_every(3)
+|> Enum.map(&Score2.score/1)
+|> Enum.sum()
+```

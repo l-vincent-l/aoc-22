@@ -1,0 +1,45 @@
+# Advent of code - Day 4
+
+## Section
+
+```elixir
+inputs =
+  File.read!("inputs/day4.txt")
+  |> String.trim()
+  |> String.split("\n")
+  |> Enum.map(fn v ->
+    Regex.run(~r/(\d+)-(\d+),(\d+)-(\d+)/, v)
+    |> Enum.slice(1..-1)
+    |> Enum.map(&String.to_integer/1)
+  end)
+```
+
+## Partie 1
+
+```elixir
+inputs
+|> Enum.count(fn [r11, r12, r21, r22] ->
+  MapSet.difference(
+    MapSet.new(r11..r12),
+    MapSet.new(r21..r22)
+  )
+  |> MapSet.size() == 0 ||
+    MapSet.difference(
+      MapSet.new(r21..r22),
+      MapSet.new(r11..r12)
+    )
+    |> MapSet.size() == 0
+end)
+```
+
+## Partie 2
+
+```elixir
+inputs
+|> Enum.count(fn [r11, r12, r21, r22] ->
+  !MapSet.disjoint?(
+    MapSet.new(r11..r12),
+    MapSet.new(r21..r22)
+  )
+end)
+```

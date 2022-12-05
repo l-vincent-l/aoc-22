@@ -23,10 +23,14 @@ stacks =
     end
   )
 
+indexed_stacks =
+  stacks
+  |> Enum.with_index(1)
+  |> Enum.reduce(Map.new(), fn {v, k}, acc -> Map.put(acc, k, v) end)
+
 moves =
   str_moves
-  |> String.trim()
-  |> String.split("\n")
+  |> String.split("\n", trim: true)
   |> Enum.map(fn s ->
     Regex.run(~r/move (\d+) from (\d+) to (\d+)/, s)
     |> Enum.slice(1..-1)
@@ -71,6 +75,16 @@ end)
 |> to_string()
 ```
 
+```elixir
+Enum.reduce(moves, indexed_stacks, fn [amount_to_move, from_, to_], acc ->
+  {moved, acc} = pop_in(acc, [from_, Access.slice(0..(amount_to_move - 1))])
+  Map.update!(acc, to_, &(Enum.reverse(moved) ++ &1))
+end)
+|> Map.values()
+|> Enum.map(&hd/1)
+|> to_string()
+```
+
 ## Partie 2
 
 ```elixir
@@ -103,5 +117,15 @@ Enum.reduce(moves, stacks, fn move, stacks ->
   end)
 end)
 |> Enum.map(fn s -> Enum.at(s, 0) end)
+|> to_string()
+```
+
+```elixir
+Enum.reduce(moves, indexed_stacks, fn [amount_to_move, from_, to_], acc ->
+  {moved, acc} = pop_in(acc, [from_, Access.slice(0..(amount_to_move - 1))])
+  Map.update!(acc, to_, &(moved ++ &1))
+end)
+|> Map.values()
+|> Enum.map(&hd/1)
 |> to_string()
 ```

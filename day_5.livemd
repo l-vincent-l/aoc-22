@@ -1,0 +1,107 @@
+# Advent of code - Day 5
+
+## Input
+
+```elixir
+File.read!("inputs/day5.txt")
+|> length()
+```
+
+```elixir
+[str_stacks, str_moves] =
+  File.read!("inputs/day5.txt")
+  |> String.split(" 1   2   3   4   5   6   7   8   9 ")
+
+stacks =
+  Enum.map(
+    Range.new(1, 33, 4),
+    fn charat ->
+      str_stacks
+      |> String.split("\n")
+      |> Enum.map(fn s -> String.at(s, charat) end)
+      |> Enum.reject(fn c -> c == nil || c == " " end)
+    end
+  )
+
+moves =
+  str_moves
+  |> String.trim()
+  |> String.split("\n")
+  |> Enum.map(fn s ->
+    Regex.run(~r/move (\d+) from (\d+) to (\d+)/, s)
+    |> Enum.slice(1..-1)
+    |> Enum.map(&String.to_integer/1)
+  end)
+
+{stacks, moves}
+```
+
+## Partie 1
+
+```elixir
+Enum.reduce(moves, stacks, fn move, stacks ->
+  [amount_to_move, from_, to_] = move
+  from_ = from_ - 1
+  to_ = to_ - 1
+
+  {to_remove, _} =
+    stacks
+    |> Enum.at(from_)
+    |> Enum.split(amount_to_move)
+
+  Range.new(0, 8)
+  |> Enum.map(fn r ->
+    stack = Enum.at(stacks, r)
+
+    stack =
+      if r != from_ do
+        stack
+      else
+        Enum.drop(stack, amount_to_move)
+      end
+
+    if r != to_ do
+      stack
+    else
+      (to_remove |> Enum.reverse()) ++ stack
+    end
+  end)
+end)
+|> Enum.map(fn s -> Enum.at(s, 0) end)
+|> to_string()
+```
+
+## Partie 2
+
+```elixir
+Enum.reduce(moves, stacks, fn move, stacks ->
+  [amount_to_move, from_, to_] = move
+  from_ = from_ - 1
+  to_ = to_ - 1
+
+  {to_remove, _} =
+    stacks
+    |> Enum.at(from_)
+    |> Enum.split(amount_to_move)
+
+  Range.new(0, 8)
+  |> Enum.map(fn r ->
+    stack = Enum.at(stacks, r)
+
+    stack =
+      if r != from_ do
+        stack
+      else
+        Enum.drop(stack, amount_to_move)
+      end
+
+    if r != to_ do
+      stack
+    else
+      to_remove ++ stack
+    end
+  end)
+end)
+|> Enum.map(fn s -> Enum.at(s, 0) end)
+|> to_string()
+```

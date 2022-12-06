@@ -7,43 +7,33 @@ input = File.read!("inputs/day6.txt")
 ```
 
 ```elixir
-(input
- |> String.graphemes()
- |> Enum.with_index()
- |> Enum.reduce_while(
-   [],
-   fn
-     {<<c::utf8>>, _}, l when length(l) < 3 ->
-       {:cont, [c | l]}
-
-     {<<c::utf8>>, i}, l ->
-       if c not in l and length(Enum.uniq(l)) == 3 do
-         {:halt, i}
-       else
-         {:cont, [c | l] |> Enum.take(3)}
-       end
-   end
- )) + 1
+input
+|> String.graphemes()
+|> Enum.with_index(1)
+|> Enum.reduce_while(
+  [],
+  fn {c, i}, l ->
+    case Enum.uniq([c | l]) do
+      new_l when length(new_l) == 4 -> {:halt, i}
+      _ -> {:cont, Enum.take([c | l], 3)}
+    end
+  end
+)
 ```
 
 ## Part2
 
 ```elixir
-(input
- |> String.graphemes()
- |> Enum.with_index()
- |> Enum.reduce_while(
-   [],
-   fn
-     {<<c::utf8>>, _}, l when length(l) < 13 ->
-       {:cont, [c | l]}
-
-     {<<c::utf8>>, i}, l ->
-       if c not in l and length(Enum.uniq(l)) == 13 do
-         {:halt, i}
-       else
-         {:cont, [c | l] |> Enum.take(13)}
-       end
-   end
- )) + 1
+input
+|> String.graphemes()
+|> Enum.with_index(1)
+|> Enum.reduce_while(
+  [],
+  fn {c, i}, l ->
+    case Enum.uniq([c | l]) do
+      new_l when length(new_l) == 14 -> {:halt, i}
+      _ -> {:cont, Enum.take([c | l], 13)}
+    end
+  end
+)
 ```

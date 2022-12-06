@@ -1,0 +1,49 @@
+# Advent of Code - Day 6
+
+## Part 1
+
+```elixir
+input = File.read!("inputs/day6.txt")
+```
+
+```elixir
+(input
+ |> String.graphemes()
+ |> Enum.with_index()
+ |> Enum.reduce_while(
+   [],
+   fn
+     {<<c::utf8>>, _}, l when length(l) < 3 ->
+       {:cont, [c | l]}
+
+     {<<c::utf8>>, i}, l ->
+       if c not in l and length(Enum.uniq(l)) == 3 do
+         {:halt, i}
+       else
+         {:cont, [c | l] |> Enum.take(3)}
+       end
+   end
+ )) + 1
+```
+
+## Part2
+
+```elixir
+(input
+ |> String.graphemes()
+ |> Enum.with_index()
+ |> Enum.reduce_while(
+   [],
+   fn
+     {<<c::utf8>>, _}, l when length(l) < 13 ->
+       {:cont, [c | l]}
+
+     {<<c::utf8>>, i}, l ->
+       if c not in l and length(Enum.uniq(l)) == 13 do
+         {:halt, i}
+       else
+         {:cont, [c | l] |> Enum.take(13)}
+       end
+   end
+ )) + 1
+```

@@ -1,0 +1,158 @@
+# Advent of code - Day 7
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+  ],
+  force: true
+)
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"7","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "7", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+input = """
+$ cd /
+$ ls
+dir a
+14848514 b.txt
+8504156 c.dat
+dir d
+$ cd a
+$ ls
+dir e
+29116 f
+2557 g
+62596 h.lst
+$ cd e
+$ ls
+584 i
+$ cd ..
+$ cd ..
+$ cd d
+$ ls
+4060174 j
+8033020 d.log
+5626152 d.ext
+7214296 k
+"""
+
+defmodule AddSize do
+  def add(%{size: _} = m), do: m
+
+  def add(m) do
+    new_map = Enum.reduce(m, %{}, fn {k, v}, acc -> Map.put(acc, k, add(v)) end)
+    size = Enum.reduce(new_map, 0, fn {_, %{size: size}}, acc -> acc + size end)
+
+    Map.put(new_map, :size, size)
+  end
+end
+
+tree =
+  puzzle_input
+  |> String.split("\n")
+  |> Enum.reduce({%{}, []}, fn command, {directories, current_path} ->
+    case command do
+      "$ cd /" ->
+        {directories, []}
+
+      "$ cd .." ->
+        {
+          directories,
+          case current_path do
+            [_ | t] -> t
+            _ -> current_path
+          end
+        }
+
+      "$ cd " <> dirname ->
+        {directories, [dirname | current_path]}
+
+      "dir " <> dirname ->
+        {
+          put_in(
+            directories,
+            Enum.reverse([dirname | current_path]),
+            %{}
+          ),
+          current_path
+        }
+
+      "$ ls" ->
+        {directories, current_path}
+
+      fsize_name ->
+        with [fsize, fname] <- String.split(fsize_name) do
+          {
+            put_in(
+              directories,
+              Enum.reverse([fname | current_path]),
+              %{size: String.to_integer(fsize)}
+            ),
+            current_path
+          }
+        else
+          _ ->
+            {directories, current_path}
+        end
+    end
+  end)
+  |> elem(0)
+  |> AddSize.add()
+```
+
+```elixir
+defmodule Search do
+  def search(%{size: size} = dirs) when map_size(dirs) > 1 do
+    debut =
+      if size <= 100_000 do
+        size
+      else
+        0
+      end
+
+    dirs
+    |> Enum.reject(fn {k, _} -> k == :size end)
+    |> Enum.reduce(debut, fn {_, x}, acc -> acc + search(x) end)
+  end
+
+  def search(_), do: 0
+end
+
+Search.search(tree)
+```
+
+## Part2
+
+```elixir
+total_space = 70_000_000
+free_space = total_space - tree[:size]
+needed_space = 30_000_000 - free_space
+
+defmodule Search2 do
+  def search(dirs, needed_space) when map_size(dirs) > 1 do
+    dirs
+    |> Enum.reduce([], fn
+      {k, %{size: size} = m}, acc when size >= needed_space ->
+        acc ++ [{k, size}] ++ search(m, needed_space)
+
+      {_, m}, acc ->
+        acc ++ search(m, needed_space)
+    end)
+  end
+
+  def search(_, _), do: []
+end
+
+tree
+|> Search2.search(needed_space)
+|> Enum.min_by(fn {_, s} -> s end)
+|> elem(1)
+```

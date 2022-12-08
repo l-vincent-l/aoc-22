@@ -1,0 +1,104 @@
+# Untitled notebook
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+  ],
+  force: true
+)
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"8","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "8", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+
+```
+
+```elixir
+input = """
+30373
+25512
+65332
+33549
+35390
+"""
+
+trees =
+  puzzle_input
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn row -> String.graphemes(row) |> Enum.map(fn t -> String.to_integer(t) end) end)
+```
+
+```elixir
+defmodule A do
+  def a(forest, default, func) do
+    height = length(forest)
+    width = length(Enum.at(forest, 0))
+
+    0..(height - 1)
+    |> Enum.map(fn i ->
+      Enum.map(
+        0..(width - 1),
+        fn j ->
+          a(i, j, forest, height, width, default, func)
+        end
+      )
+    end)
+  end
+
+  def a(_, 0, _, _, _, default, _), do: default
+  def a(0, _, _, _, _, default, _), do: default
+  def a(_, j, _, _, width, default, _) when j == width - 1, do: default
+  def a(i, _, _, height, _, default, _) when i == height - 1, do: default
+
+  def a(i, j, forest, _, _, _, func) do
+    tree =
+      forest
+      |> Enum.at(i)
+      |> Enum.at(j)
+
+    line = Enum.at(forest, i)
+    left = Enum.slice(line, 0..(j - 1))
+    right = Enum.slice(line, (j + 1)..-1)
+
+    row = Enum.map(forest, fn l -> Enum.at(l, j) end)
+    top = Enum.slice(row, 0..(i - 1))
+    bottom = Enum.slice(row, (i + 1)..-1)
+
+    func.([left, right, top, bottom], tree)
+  end
+end
+```
+
+```elixir
+f = fn l, tree ->
+  Enum.reduce(l, false, fn r, acc -> acc or Enum.all?(r, fn t -> t < tree end) end)
+end
+
+f3 = fn l, tree ->
+  Enum.reduce(l, 1, fn r, acc ->
+    acc *
+      (r
+       |> Enum.find_index(fn x -> x >= tree end)
+       |> case do
+         nil -> length(r)
+         i -> i + 1
+       end)
+  end)
+end
+
+f2 = fn [left, right, top, bottom], tree ->
+  f3.([Enum.reverse(left), right, Enum.reverse(top), bottom], tree)
+end
+
+A.a(trees, 0, f2)
+|> Enum.flat_map(&Function.identity/1)
+|> Enum.max()
+```

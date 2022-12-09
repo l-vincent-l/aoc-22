@@ -31,31 +31,18 @@ R 2
 ```
 
 ```elixir
-instructions =
-  puzzle_input
-  |> String.split("\n", trim: true)
-  |> Enum.map(fn s ->
-    [move, i] = String.split(s, " ")
-    {move, String.to_integer(i)}
-  end)
-```
-
-```elixir
 defmodule Rope do
-  def move_head(instructions) do
-    instructions
-    |> Enum.flat_map(fn {dir, count} -> Enum.map(0..(count - 1), fn _ -> dir end) end)
-    |> Enum.reduce(
-      [{0, 0}],
-      fn dir, [last_move | _] = moves ->
-        [make_head_move(dir, last_move) | moves]
-      end
-    )
-    |> Enum.reverse()
+  def move_head(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Stream.map(fn l -> String.split(l, " ") end)
+    |> Stream.map(fn [move, count] -> {move, String.to_integer(count)} end)
+    |> Stream.flat_map(fn {dir, count} -> Stream.map(0..(count - 1), fn _ -> dir end) end)
+    |> Stream.scan({0, 0}, &make_head_move/2)
   end
 
   def move_tail(head_positions) do
-    Enum.scan(head_positions, {0, 0}, &make_tail_move/2)
+    Stream.scan(head_positions, {0, 0}, &make_tail_move/2)
   end
 
   defp make_head_move("R", {x, y}), do: {x + 1, y}
@@ -77,7 +64,8 @@ end
 ## Part 1
 
 ```elixir
-Rope.move_head(instructions)
+puzzle_input
+|> Rope.move_head()
 |> Rope.move_tail()
 |> Enum.uniq()
 |> Enum.count()
@@ -86,7 +74,8 @@ Rope.move_head(instructions)
 ## Part 2
 
 ```elixir
-Rope.move_head(instructions)
+puzzle_input
+|> Rope.move_head()
 |> Rope.move_tail()
 |> Rope.move_tail()
 |> Rope.move_tail()

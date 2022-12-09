@@ -1,0 +1,101 @@
+# Advent of Code - Day 9
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+  ],
+  force: true
+)
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"9","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "9", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+input = """
+R 4
+U 4
+L 3
+D 1
+R 4
+D 1
+L 5
+R 2
+"""
+```
+
+```elixir
+instructions =
+  puzzle_input
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn s ->
+    [move, i] = String.split(s, " ")
+    {move, String.to_integer(i)}
+  end)
+```
+
+```elixir
+defmodule Rope do
+  def move_head(instructions) do
+    instructions
+    |> Enum.flat_map(fn {dir, count} -> Enum.map(0..(count - 1), fn _ -> dir end) end)
+    |> Enum.reduce(
+      [{0, 0}],
+      fn dir, [last_move | _] = moves ->
+        [make_head_move(dir, last_move) | moves]
+      end
+    )
+    |> Enum.reverse()
+  end
+
+  def move_tail(head_positions) do
+    Enum.scan(head_positions, {0, 0}, &make_tail_move/2)
+  end
+
+  defp make_head_move("R", {x, y}), do: {x + 1, y}
+  defp make_head_move("L", {x, y}), do: {x - 1, y}
+  defp make_head_move("U", {x, y}), do: {x, y + 1}
+  defp make_head_move("D", {x, y}), do: {x, y - 1}
+
+  defp make_tail_move({hx, hy}, {tx, ty}) when abs(hx - tx) > 1 or abs(hy - ty) > 1,
+    do: {tx + get_cross_direction(hx, tx), ty + get_cross_direction(hy, ty)}
+
+  defp make_tail_move(_head, tail), do: tail
+
+  defp get_cross_direction(x, x), do: 0
+  defp get_cross_direction(head, tail) when head > tail, do: 1
+  defp get_cross_direction(_head, _tail), do: -1
+end
+```
+
+## Part 1
+
+```elixir
+Rope.move_head(instructions)
+|> Rope.move_tail()
+|> Enum.uniq()
+|> Enum.count()
+```
+
+## Part 2
+
+```elixir
+Rope.move_head(instructions)
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Rope.move_tail()
+|> Enum.uniq()
+|> Enum.count()
+```

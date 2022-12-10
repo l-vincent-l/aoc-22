@@ -175,6 +175,13 @@ instructions =
 ```
 
 ```elixir
+defmodule Sprite do
+  def draw({r_value, position}) when position in [r_value - 1, r_value, r_value + 1], do: "#"
+  def draw({_r_value, _position}), do: "."
+end
+```
+
+```elixir
 defmodule Register do
   def read(instructions, register \\ [1])
   def read([], register), do: Enum.reverse(register)
@@ -186,6 +193,7 @@ defmodule Register do
     read(instructions, [previous_state + value, previous_state] ++ register)
   end
 
+  # Part 1
   def signal_strength(register) do
     register = Enum.with_index(register, 1)
 
@@ -201,8 +209,24 @@ defmodule Register do
     {a, b} = Enum.at(register, i - 1)
     a * b
   end
+
+  # Part2
+
+  def draw(register) do
+    register
+    |> Enum.chunk_every(40)
+    |> Enum.map(fn line ->
+      line
+      |> Enum.with_index()
+      |> Enum.map(&Sprite.draw/1)
+      |> to_string()
+    end)
+    |> Enum.map(&IO.puts/1)
+  end
 end
 ```
+
+## Part 1
 
 ```elixir
 instructions
@@ -210,27 +234,10 @@ instructions
 |> Register.signal_strength()
 ```
 
-```elixir
-defmodule Sprite do
-  def draw({r_value, position}) when position in [r_value - 1, r_value, r_value + 1], do: "#"
-  def draw({_r_value, _position}), do: "."
-end
-```
+## Part 2
 
 ```elixir
 instructions
 |> Register.read()
-|> Enum.chunk_every(40)
-|> Enum.map(fn line ->
-  line
-  |> Enum.with_index()
-  |> Enum.map(&Sprite.draw/1)
-  |> to_string()
-end)
-|> Enum.map(&IO.puts/1)
-```
-
-```elixir
-i = 0
-1 in 0..2
+|> Register.draw()
 ```

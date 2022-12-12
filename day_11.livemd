@@ -1,0 +1,170 @@
+# Advent of Code - Day 11
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+  ],
+  force: true
+)
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"11","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "11", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+input = """
+Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+Monkey 1:
+  Starting items: 54, 65, 75, 74
+  Operation: new = old + 6
+  Test: divisible by 19
+    If true: throw to monkey 2
+    If false: throw to monkey 0
+
+Monkey 2:
+  Starting items: 79, 60, 97
+  Operation: new = old * old
+  Test: divisible by 13
+    If true: throw to monkey 1
+    If false: throw to monkey 3
+
+Monkey 3:
+  Starting items: 74
+  Operation: new = old + 3
+  Test: divisible by 17
+    If true: throw to monkey 0
+    If false: throw to monkey 1
+"""
+```
+
+```elixir
+defmodule Monkey do
+  defstruct id: nil,
+            nb_inspected: 0,
+            items: [],
+            divisor: nil,
+            operation: nil,
+            throw_to_true: nil,
+            throw_to_false: nil
+
+  def parse(str),
+    do:
+      str
+      |> String.split("\n", trim: true)
+      |> Enum.reduce(%__MODULE__{}, &parse/2)
+
+  def parse("Monkey " <> monkey_id, monkey),
+    do: Map.put(monkey, :id, monkey_id |> String.slice(0..-2) |> String.to_integer())
+
+  def parse("  Starting items: " <> items, monkey),
+    do:
+      Map.put(
+        monkey,
+        :items,
+        items
+        |> String.split(", ")
+        |> Enum.map(&String.to_integer/1)
+      )
+
+  def parse("  Operation: new = old " <> <<str_operation::utf8>> <> " " <> str_modifier, monkey) do
+    operator = if str_operation == 42, do: &Kernel.*/2, else: &Kernel.+/2
+
+    operation =
+      case Regex.scan(~r/[0-9]+/, str_modifier) do
+        [] -> fn x -> operator.(x, x) end
+        _ -> fn x -> operator.(x, String.to_integer(str_modifier)) end
+      end
+
+    monkey
+    |> Map.put(:operation, operation)
+  end
+
+  def parse("  Test: divisible by " <> divisor, monkey),
+    do: Map.put(monkey, :divisor, String.to_integer(divisor))
+
+  def parse("    If true: throw to monkey " <> str_monkey, monkey),
+    do: Map.put(monkey, :throw_to_true, String.to_integer(str_monkey))
+
+  def parse("    If false: throw to monkey " <> str_monkey, monkey),
+    do: Map.put(monkey, :throw_to_false, String.to_integer(str_monkey))
+
+  def worry_level(monkey_id, monkeys, worry_adjuster) do
+    monkey = Enum.at(monkeys, monkey_id)
+
+    Enum.reduce(monkey.items, monkeys, fn item, monkeys ->
+      new_worry_level =
+        item
+        |> monkey.operation.()
+        |> worry_adjuster.()
+
+      monkey_to_throw_to =
+        if rem(new_worry_level, monkey.divisor) == 0,
+          do: monkey.throw_to_true,
+          else: monkey.throw_to_false
+
+      monkeys
+      |> update_in([Access.at(monkey.id), Access.key(:nb_inspected)], &(&1 + 1))
+      |> update_in([Access.at(monkey.id), Access.key(:items)], &tl(&1))
+      |> update_in(
+        [Access.at(monkey_to_throw_to), Access.key(:items)],
+        &([new_worry_level] ++ &1)
+      )
+    end)
+  end
+end
+
+defmodule Monkeys do
+  def parse(str) do
+    str
+    |> String.split("\n\n", trim: true)
+    |> Enum.map(&Monkey.parse/1)
+  end
+
+  def round(monkeys, worry_adjuster) do
+    Enum.reduce(monkeys, monkeys, fn monkey, monkeys ->
+      Monkey.worry_level(monkey.id, monkeys, worry_adjuster)
+    end)
+  end
+
+  def worry(monkeys, round, worry_adjuster) do
+    1..round
+    |> Enum.reduce(monkeys, fn _, monkeys -> Monkeys.round(monkeys, worry_adjuster) end)
+    |> Enum.map(& &1.nb_inspected)
+    |> Enum.sort(:desc)
+    |> Enum.take(2)
+    |> Enum.product()
+  end
+
+  def part1(str) do
+    monkeys = parse(str)
+    worry(monkeys, 20, &div(&1, 3))
+  end
+
+  def part2(str) do
+    monkeys = parse(str)
+
+    lcm = Enum.reduce(monkeys, 1, &(&1.divisor * &2))
+    worry(monkeys, 10_000, &rem(&1, lcm))
+  end
+end
+```
+
+```elixir
+Monkeys.part2(puzzle_input)
+```
+
+```elixir
+
+```

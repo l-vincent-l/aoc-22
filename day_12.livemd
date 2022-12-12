@@ -1,0 +1,125 @@
+# Advent of Code - Day 12
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+  ],
+  force: true
+)
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"12","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "12", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+input = """
+Sabqponm
+abcryxxl
+accszExk
+acctuvwj
+abdefghi
+"""
+```
+
+```elixir
+defmodule GroundMap do
+  defstruct map: %{}, start: nil, end_: nil, edges: []
+
+  def read(input) do
+    map =
+      input
+      |> String.split("\n")
+      |> Enum.with_index(1)
+      |> Enum.reduce(
+        %{},
+        fn {line, line_no}, acc ->
+          line
+          |> String.to_charlist()
+          |> Enum.with_index(1)
+          |> Enum.reduce(
+            acc,
+            fn {c, row_no}, acc -> Map.put(acc, {line_no, row_no}, c) end
+          )
+        end
+      )
+
+    {start, _} = Enum.find(map, fn {_k, v} -> v == ?S end)
+    map = Map.put(map, start, ?a)
+    {end_, _} = Enum.find(map, fn {_k, v} -> v == ?E end)
+    map = Map.put(map, end_, ?z)
+    %__MODULE__{map: map, start: start, end_: end_}
+  end
+
+  def neighbors_coords({x, y}), do: [{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}]
+
+  def neighbors(coords, map, direction \\ :toward) do
+    coord_value = Map.get(map, coords)
+
+    coords
+    |> neighbors_coords()
+    |> Enum.filter(&Map.has_key?(map, &1))
+    |> Enum.filter(
+      if direction == :toward do
+        &(Map.get(map, &1) - coord_value <= 1)
+      else
+        &(coord_value - Map.get(map, &1) <= 1)
+      end
+    )
+  end
+
+  def djikstra(map, end_, start, direction \\ :toward, to_visit \\ [], distances \\ %{})
+
+  def djikstra(map, end_, start, direction, [], %{} = distances) when map_size(distances) == 0 do
+    to_visit = [start]
+    distances = for k <- Map.keys(map.map), into: %{}, do: {k, :infinity}
+    distances = Map.put(distances, start, 0)
+    djikstra(map, end_, start, direction, to_visit, distances)
+  end
+
+  def djikstra(_map, _end_, _start, direction, to_visit, _distances) when length(to_visit) == 0,
+    do: :notfound
+
+  def djikstra(map, end_, start, direction, [node | rest], distances) do
+    visits =
+      for link <- neighbors(node, map.map, direction),
+          distances[link] == :infinity or distances[link] > distances[node] + 1 do
+        {link, distances[node] + 1}
+      end
+
+    distances =
+      Enum.reduce(visits, distances, fn {l, d}, distances -> Map.put(distances, l, d) end)
+
+    to_visit =
+      visits
+      |> Enum.map(fn {l, _} -> l end)
+      |> Kernel.++(rest)
+      |> Enum.sort(fn a, b ->
+        case [distances[a], distances[b]] do
+          [:infinity, _] -> false
+          [_, :infinity] -> true
+          [l, k] -> l < k
+        end
+      end)
+
+    case Enum.find(to_visit, &(map.map[&1] == end_)) do
+      nil -> djikstra(map, end_, start, direction, to_visit, distances)
+      sol -> distances[sol]
+    end
+  end
+end
+```
+
+```elixir
+map = GroundMap.read(puzzle_input)
+GroundMap.djikstra(map, ?z, map.start, :toward)
+```
+
+```elixir
+GroundMap.djikstra(map, ?a, map.end_, :backward)
+```

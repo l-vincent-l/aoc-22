@@ -1,0 +1,186 @@
+# Advent of Code - Day 15
+
+```elixir
+Mix.install(
+  [
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"},
+    :kino_vega_lite
+  ],
+  force: true
+)
+
+alias VegaLite, as: Vl
+```
+
+## Section
+
+<!-- livebook:{"attrs":{"day":"15","session_secret":"SESSION","variable":"puzzle_input","year":"2022"},"kind":"Elixir.KinoAOC.HelperCell","livebook_object":"smart_cell"} -->
+
+```elixir
+{:ok, puzzle_input} = KinoAOC.download_puzzle("2022", "15", System.fetch_env!("LB_SESSION"))
+```
+
+```elixir
+input = """
+Sensor at x=2, y=18: closest beacon is at x=-2, y=15
+Sensor at x=9, y=16: closest beacon is at x=10, y=16
+Sensor at x=13, y=2: closest beacon is at x=15, y=3
+Sensor at x=12, y=14: closest beacon is at x=10, y=16
+Sensor at x=10, y=20: closest beacon is at x=10, y=16
+Sensor at x=14, y=17: closest beacon is at x=10, y=16
+Sensor at x=8, y=7: closest beacon is at x=2, y=10
+Sensor at x=2, y=0: closest beacon is at x=2, y=10
+Sensor at x=0, y=11: closest beacon is at x=2, y=10
+Sensor at x=20, y=14: closest beacon is at x=25, y=17
+Sensor at x=17, y=20: closest beacon is at x=21, y=22
+Sensor at x=16, y=7: closest beacon is at x=15, y=3
+Sensor at x=14, y=3: closest beacon is at x=15, y=3
+Sensor at x=20, y=1: closest beacon is at x=15, y=3
+"""
+```
+
+```elixir
+defmodule Day15 do
+  def parse(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(fn line ->
+      Regex.scan(
+        ~r/Sensor at x=(-?\d+), y=(-?\d+): closest beacon is at x=(-?\d+), y=(-?\d+)/,
+        line
+      )
+      |> Enum.at(0)
+      |> Enum.slice(1..-1)
+      |> Enum.map(&String.to_integer/1)
+      |> Enum.chunk_every(2)
+      |> Enum.map(&List.to_tuple/1)
+    end)
+  end
+
+  def occupation(input, y) do
+    input
+    |> Enum.reduce(
+      {[], MapSet.new()},
+      fn [s, b], {occupation, beacons} ->
+        case line(s, b, y) do
+          nil -> {occupation, beacons}
+          {range, nil} -> {[range | occupation], beacons}
+          {range, beacon} -> {[range | occupation], MapSet.put(beacons, beacon)}
+        end
+      end
+    )
+  end
+
+  def line({xa, ya} = a, {xb, yb} = b, y) do
+    max_spanning = get_spanning(a, b)
+    y_range = (ya - max_spanning)..(ya + max_spanning)
+
+    if y in y_range do
+      spanning = max_spanning - abs(ya - y)
+
+      {
+        (xa - spanning)..(xa + spanning),
+        if y == yb do
+          xb
+        else
+          nil
+        end
+      }
+    else
+      nil
+    end
+  end
+
+  def get_spanning({xa, ya}, {xb, yb}), do: abs(xa - xb) + abs(ya - yb)
+
+  def union_ranges(ranges, b \\ nil)
+
+  def union_ranges(ranges, nil) do
+    ranges
+    |> Enum.sort()
+    |> Enum.reduce([], fn
+      range, [] ->
+        [range]
+
+      range, [last_range | previous_ranges] ->
+        new_ranges = union_ranges(last_range, range)
+        Enum.sort(new_ranges, :desc) ++ previous_ranges
+    end)
+  end
+
+  def union_ranges(mina..maxa = a, minb..maxb = b) do
+    case Range.disjoint?(a, b) do
+      true -> [a, b]
+      false -> [min(mina, minb)..max(maxa, maxb)]
+    end
+  end
+
+  def part1(input, line) do
+    parsed_input = parse(input)
+    {occupation_ranges, beacons} = Day15.occupation(parsed_input, line)
+
+    a =
+      occupation_ranges
+      |> union_ranges()
+      |> Enum.map(&Range.size/1)
+      |> Enum.sum()
+
+    a - MapSet.size(beacons)
+  end
+
+  def part2(input, max_space) do
+    parsed_input = Day15.parse(input)
+
+    min_r =
+      parsed_input
+      |> Enum.flat_map(&Function.identity/1)
+      |> Enum.min_by(&elem(&1, 0))
+      |> elem(0)
+
+    {x, y} =
+      Enum.find_value(
+        0..max_space,
+        fn y ->
+          {ranges, _} = Day15.occupation(parsed_input, y)
+
+          ranges
+          |> Enum.sort()
+          |> Stream.drop_while(fn _a..b -> b < 0 end)
+          |> Stream.take_while(fn a.._b -> a <= max_space end)
+          |> Day15.union_ranges()
+          |> case do
+            r when length(r) == 1 -> nil
+            [_ | [_..x]] -> {x + 1, y}
+          end
+        end
+      )
+
+    x * 4_000_000 + y
+  end
+end
+```
+
+```elixir
+Day15.part1(puzzle_input, 2_000_000)
+```
+
+```elixir
+
+```
+
+```elixir
+[_ | [_..x]] = [15..25, -3..13]
+x
+```
+
+```elixir
+parsed_input =
+  Day15.parse(input)
+  |> Enum.flat_map(&Function.identity/1)
+  |> Enum.min_by(&elem(&1, 0))
+  |> elem(0)
+```
+
+```elixir
+4_000_000 / 50_000
+```

@@ -3,10 +3,13 @@
 ```elixir
 Mix.install(
   [
-    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"}
+    {:kino_aoc, git: "https://github.com/ljgago/kino_aoc"},
+    :kino_vega_lite
   ],
   force: true
 )
+
+alias VegaLite, as: Vl
 ```
 
 ## Section
@@ -26,103 +29,124 @@ input = """
 
 ```elixir
 defmodule Day14 do
-  defstruct rocks: [], bottom: nil, sand: MapSet.new(), infinite_bottom: false
+  defstruct rocks_and_sand: [],
+            bottom: nil,
+            count_sand: 0,
+            infinite_bottom: false,
+            sand: MapSet.new(),
+            rocks: []
 
   def parse(input) do
     rocks =
       input
       |> String.split("\n", trim: true)
-      |> Enum.map(fn s ->
+      |> Stream.flat_map(fn s ->
         String.split(s, " -> ")
-        |> Enum.map(fn e ->
+        |> Stream.map(fn e ->
           e |> String.split(",") |> Enum.map(&String.to_integer/1)
         end)
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn
-          [[x, y1], [x, y2]] -> Enum.map(y1..y2, &{x, &1})
-          [[x1, y], [x2, y]] -> Enum.map(x1..x2, &{&1, y})
+        |> Stream.chunk_every(2, 1, :discard)
+        |> Stream.flat_map(fn
+          [[x, y1], [x, y2]] -> Stream.map(y1..y2, &{x, &1})
+          [[x1, y], [x2, y]] -> Stream.map(x1..x2, &{&1, y})
         end)
-        |> Enum.flat_map(&Function.identity/1)
       end)
-      |> Enum.flat_map(&Function.identity/1)
       |> MapSet.new()
 
-    %__MODULE__{rocks: rocks, bottom: rocks |> Enum.max_by(&elem(&1, 1)) |> elem(1)}
+    %__MODULE__{
+      rocks_and_sand: rocks,
+      rocks: rocks,
+      bottom: rocks |> Enum.max_by(&elem(&1, 1)) |> elem(1)
+    }
   end
 
-  def make_sand_fall(state, pos \\ {500, 0})
+  def make_sand_fall(state, pos \\ nil)
+
+  def make_sand_fall(state, nil) do
+    Stream.repeatedly(fn -> {500, 0} end)
+    |> Enum.reduce_while(
+      state,
+      fn pos, state ->
+        case make_sand_fall(state, pos) do
+          :halt ->
+            {:halt, state}
+
+          {_x, y} = sand ->
+            {
+              if y == 0 do
+                :halt
+              else
+                :cont
+              end,
+              state
+              |> update_in([Access.key!(:rocks_and_sand)], &MapSet.put(&1, sand))
+              |> update_in([Access.key!(:sand)], &MapSet.put(&1, sand))
+              |> update_in([Access.key!(:count_sand)], &(&1 + 1))
+            }
+        end
+      end
+    )
+
+    # |> Map.get(:count_sand)
+  end
 
   def make_sand_fall(%__MODULE__{bottom: bottom}, {_x, y}) when y > bottom do
     :halt
   end
 
   def make_sand_fall(state, {x, y} = pos) do
-    cond do
-      not blocked(state, {x, y + 1}) ->
-        make_sand_fall(state, {x, y + 1})
-
-      not blocked(state, {x - 1, y + 1}) ->
-        make_sand_fall(state, {x - 1, y + 1})
-
-      not blocked(state, {x + 1, y + 1}) ->
-        make_sand_fall(state, {x + 1, y + 1})
-
-      true ->
-        pos
+    case Enum.find([{x, y + 1}, {x - 1, y + 1}, {x + 1, y + 1}], &(not blocked(state, &1))) do
+      nil -> pos
+      new_pos -> make_sand_fall(state, new_pos)
     end
   end
 
-  defp blocked(%__MODULE__{infinite_bottom: false} = state, pos),
-    do: MapSet.member?(state.rocks, pos) or MapSet.member?(state.sand, pos)
-
-  defp blocked(%__MODULE__{infinite_bottom: true} = state, pos = {_x, y}),
-    do: y == state.bottom or MapSet.member?(state.rocks, pos) or MapSet.member?(state.sand, pos)
+  defp blocked(state, pos = {_x, y}),
+    do: (state.infinite_bottom and y == state.bottom) or MapSet.member?(state.rocks_and_sand, pos)
 
   def part1(input) do
-    state = Day14.parse(input)
-
-    state =
-      Stream.repeatedly(fn -> {500, 0} end)
-      |> Enum.reduce_while(
-        state,
-        fn pos, state ->
-          case Day14.make_sand_fall(state, pos) do
-            :halt -> {:halt, state}
-            sand -> {:cont, update_in(state, [Access.key!(:sand)], &MapSet.put(&1, sand))}
-          end
-        end
-      )
-
-    Enum.count(state.sand)
+    Day14.parse(input)
+    |> make_sand_fall()
   end
 
   def part2(input) do
-    state =
-      Day14.parse(input)
-      |> Map.update!(:bottom, &(&1 + 2))
-      |> Map.put(:infinite_bottom, true)
-
-    state =
-      Stream.repeatedly(fn -> {500, 0} end)
-      |> Enum.reduce_while(
-        state,
-        fn pos, state ->
-          case Day14.make_sand_fall(state, pos) do
-            {500, 0} = sand ->
-              {:halt, update_in(state, [Access.key!(:sand)], &MapSet.put(&1, sand))}
-
-            :halt ->
-              {:halt, state}
-
-            sand ->
-              {:cont, update_in(state, [Access.key!(:sand)], &MapSet.put(&1, sand))}
-          end
-        end
-      )
-
-    Enum.count(state.sand)
+    Day14.parse(input)
+    |> Map.update!(:bottom, &(&1 + 2))
+    |> Map.put(:infinite_bottom, true)
+    |> make_sand_fall()
   end
 end
 
-Day14.part2(puzzle_input)
+state = Day14.part2(puzzle_input)
+Map.get(state, :count_sand)
+```
+
+```elixir
+path_chart =
+  Vl.new(width: 800, height: 1200)
+  |> Vl.layers([
+    Vl.new()
+    |> Vl.data_from_values(
+      state.rocks
+      |> Enum.map(fn {x, y} -> %{"x" => x, "y" => y, "h" => 1} end)
+    )
+    |> Vl.mark(:rect, fill: :gray, stroke: :gray)
+    |> Vl.encode_field(:x, "x", type: :nominal, axis: nil)
+    |> Vl.encode_field(:y, "y", type: :nominal, axis: nil)
+    |> Vl.encode(:color, field: "h", type: :quantitative),
+    Vl.new()
+    |> Vl.data_from_values(
+      state.sand
+      |> Enum.map(fn {x, y} -> %{"x" => x, "y" => y, "h" => 2} end)
+    )
+    |> Vl.mark(:circle, size: 4, fill: :yellow)
+    |> Vl.encode_field(:x, "x", type: :nominal, axis: nil)
+    |> Vl.encode_field(:y, "y", type: :nominal, axis: nil)
+    |> Vl.encode(:color, field: "h", type: :quantitative, legend: nil)
+  ])
+  |> Vl.config(view: [stroke: nil, fill: :black])
+  |> Kino.VegaLite.new()
+  |> Kino.render()
+
+:ok
 ```

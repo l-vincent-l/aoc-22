@@ -1,4 +1,4 @@
-# Untitled notebook
+# Advent of code - Day 8
 
 ```elixir
 Mix.install(
@@ -31,7 +31,7 @@ input = """
 """
 
 trees =
-  puzzle_input
+  input
   |> String.split("\n", trim: true)
   |> Enum.map(fn row -> String.graphemes(row) |> Enum.map(fn t -> String.to_integer(t) end) end)
 ```
@@ -58,35 +58,34 @@ defmodule A do
   def a(_, j, _, _, width, default, _) when j == width - 1, do: default
   def a(i, _, _, height, _, default, _) when i == height - 1, do: default
 
-  def a(i, j, forest, _, _, _, func) do
-    tree =
-      forest
-      |> Enum.at(i)
-      |> Enum.at(j)
+  def a(i, j, forest, height, width, _, func) do
+    tree = get_tree({i, j}, forest)
+    left = for x <- 0..(j - 1), do: {i, x}
+    right = for x <- (j + 1)..(width - 1), do: {i, x}
 
-    line = Enum.at(forest, i)
-    left = Enum.slice(line, 0..(j - 1))
-    right = Enum.slice(line, (j + 1)..-1)
-
-    row = Enum.map(forest, fn l -> Enum.at(l, j) end)
-    top = Enum.slice(row, 0..(i - 1))
-    bottom = Enum.slice(row, (i + 1)..-1)
+    top = for y <- 0..(i - 1), do: {y, j}
+    bottom = for y <- (i + 1)..(height - 1), do: {y, j}
 
     func.([left, right, top, bottom], tree)
   end
+
+  def get_tree({i, j}, forest), do: forest |> Enum.at(i) |> Enum.at(j)
 end
 ```
 
 ```elixir
 f = fn l, tree ->
-  Enum.reduce(l, false, fn r, acc -> acc or Enum.all?(r, fn t -> t < tree end) end)
+  Enum.any?(
+    l,
+    fn r -> Enum.all?(r, fn t -> A.get_tree(t, trees) < tree end) end
+  )
 end
 
 f3 = fn l, tree ->
   Enum.reduce(l, 1, fn r, acc ->
     acc *
       (r
-       |> Enum.find_index(fn x -> x >= tree end)
+       |> Enum.find_index(fn x -> A.get_tree(x, trees) >= tree end)
        |> case do
          nil -> length(r)
          i -> i + 1
@@ -98,7 +97,111 @@ f2 = fn [left, right, top, bottom], tree ->
   f3.([Enum.reverse(left), right, Enum.reverse(top), bottom], tree)
 end
 
-A.a(trees, 0, f2)
-|> Enum.flat_map(&Function.identity/1)
-|> Enum.max()
+A.a(trees, true, f)
+```
+
+```elixir
+defmodule Traverse do
+  def t(trees, start_acc, scanner, reducer) do
+    height = length(trees)
+    width = length(Enum.at(trees, 0))
+
+    [l1, l2] =
+      Enum.map(
+        [{0..(height - 1), 0..(width - 1)}, {0..(height - 1), (width - 1)..0}],
+        fn r -> traverse(r, trees, &hget/3, start_acc, scanner) end
+      )
+
+    [l3, l4] =
+      Enum.map(
+        [{0..(width - 1), 0..(height - 1)}, {0..(width - 1), (height - 1)..0}],
+        fn r -> traverse(r, trees, &vget/3, start_acc, scanner) end
+      )
+
+    IO.inspect(l2)
+
+    Stream.map(
+      0..(height - 1),
+      fn i ->
+        Stream.map(
+          0..(width - 1),
+          fn j ->
+            Enum.reduce(
+              [
+                hget(i, j, l1),
+                hget(i, width - 1 - j, l2),
+                hget(j, i, l3),
+                hget(j, height - 1 - i, l4)
+              ],
+              reducer
+            )
+          end
+        )
+      end
+    )
+  end
+
+  def hget(i, j, trees),
+    do:
+      trees
+      |> Enum.at(i)
+      |> Enum.at(j)
+
+  def vget(i, j, trees),
+    do:
+      trees
+      |> Enum.at(j)
+      |> Enum.at(i)
+
+  def traverse({is, js}, trees, getter, start_acc, scanner) do
+    Enum.map(
+      is,
+      fn i ->
+        Enum.scan(js, start_acc, fn j, {max_height, _} ->
+          x = getter.(i, j, trees)
+
+          scanner.(i, x, max_height)
+        end)
+      end
+    )
+    |> Enum.map(fn line ->
+      Enum.map(line, fn {_, r} -> r end)
+    end)
+  end
+
+  def part1(trees) do
+    t(
+      trees,
+      {-1, false},
+      &is_max_height/3,
+      &Kernel.or/2
+    )
+    |> Stream.flat_map(&Function.identity/1)
+    |> Stream.filter(&Function.identity/1)
+    |> Enum.count()
+  end
+
+  def is_max_height(_i, x, max_height) when x > max_height, do: {x, true}
+  def is_max_height(_i, _x, max_height), do: {max_height, false}
+
+  def part2(trees) do
+    t(
+      trees,
+      {-1, 0},
+      &visibility/3,
+      &Kernel.*/2
+    )
+    |> Enum.to_list()
+    |> Enum.map(&Enum.to_list/1)
+
+    # |> Stream.flat_map(&Function.identity/1)
+    # |> Enum.max()
+  end
+
+  def visibility(0, x, _max_height), do: {x, 1}
+  def visibility(i, x, max_height) when x > max_height, do: {x, i - 1}
+  def visibility(_i, _x, max_height), do: {max_height, 1}
+end
+
+Traverse.part2(trees)
 ```
